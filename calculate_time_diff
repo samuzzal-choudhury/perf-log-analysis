@@ -1,0 +1,11 @@
+#!/usr/local/bin/python3
+
+import sys
+import time
+import ciso8601
+
+s = ciso8601.parse_datetime(sys.argv[1])
+started = time.mktime(s.timetuple())*1e3 + s.microsecond/1e3
+e = ciso8601.parse_datetime(sys.argv[2])
+ended = time.mktime(e.timetuple())*1e3 + e.microsecond/1e3
+print (ended - started)

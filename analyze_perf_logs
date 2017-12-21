@@ -1,0 +1,98 @@
+#!/bin/bash
+
+#if [ ! -f $1 ]
+#then
+#	echo "Please provide a valid file as script argument"
+#fi
+
+pods=`oc get pods | grep bayesian-worker-api | grep "Running" | awk '{print $1}'`
+#echo $pods
+
+rm -rf .perf.log 
+for pod in $pods; do
+	oc logs $pod|grep PERF_LOG|awk '{print $6}' >> .perf.log
+done
+
+cat .perf.log | cut -d '|' -f1 | uniq > .req_ids.log
+
+total_time=0
+count=0
+total_ga_db_time=0
+total_sa_graph1_time=0
+total_sa_license_time=0
+total_r_pgm_time=0
+total_r_graph1_time=0
+total_r_graph2_time=0
+total_r_graph3_time=0
+total_r_license_time=0
+
+while read id; do
+	grep $id .perf.log > .req_data.log
+	ga_db_start=`grep 'GRAPH_AGGREGATOR|DB|START' .req_data.log | cut -d '|' -f5`
+	ga_db_end=`grep 'GRAPH_AGGREGATOR|DB|END' .req_data.log | cut -d '|' -f5`
+	sa_graph1_start=`grep 'STACK_AGGREGATOR|GRAPH1|START' .req_data.log | cut -d '|' -f5`
+	sa_graph1_end=`grep 'STACK_AGGREGATOR|GRAPH1|END' .req_data.log | cut -d '|' -f5`
+	sa_license_start=`grep 'STACK_AGGREGATOR|LICENSE|START' .req_data.log | cut -d '|' -f5`
+	sa_license_end=`grep 'STACK_AGGREGATOR|LICENSE|END' .req_data.log | cut -d '|' -f5`
+	r_pgm_start=`grep 'RECOMMENDER|PGM|START' .req_data.log | cut -d '|' -f5`
+	r_pgm_end=`grep 'RECOMMENDER|PGM|END' .req_data.log | cut -d '|' -f5`
+	r_graph1_start=`grep 'RECOMMENDER|GRAPH1|START' .req_data.log | cut -d '|' -f5`
+	r_graph1_end=`grep 'RECOMMENDER|GRAPH1|END' .req_data.log | cut -d '|' -f5`
+	r_graph2_start=`grep 'RECOMMENDER|GRAPH2|START' .req_data.log | cut -d '|' -f5`
+	r_graph2_end=`grep 'RECOMMENDER|GRAPH2|END' .req_data.log | cut -d '|' -f5`
+	r_graph3_start=`grep 'RECOMMENDER|GRAPH3|START' .req_data.log | cut -d '|' -f5`
+	r_graph3_end=`grep 'RECOMMENDER|GRAPH3|END' .req_data.log | cut -d '|' -f5`
+	r_license_start=`grep 'RECOMMENDER|LICENSE|START' .req_data.log | cut -d '|' -f5`
+	r_license_end=`grep 'RECOMMENDER|LICENSE|END' .req_data.log | cut -d '|' -f5`
+
+	time=`./calculate_time_diff $ga_db_start $ga_db_end`
+	total_ga_db_time=`echo $total_ga_db_time+$time | bc -l`
+	time=`./calculate_time_diff $sa_graph1_start $sa_graph1_end`
+	total_sa_graph1_time=`echo $total_sa_graph1_time+$time | bc -l`
+	time=`./calculate_time_diff $sa_license_start $sa_license_end`
+	total_sa_license_time=`echo $total_sa_license_time+$time | bc -l`
+	time=`./calculate_time_diff $r_pgm_start $r_pgm_end`
+	total_r_pgm_time=`echo $total_r_pgm_time+$time | bc -l`
+	time=`./calculate_time_diff $r_graph1_start $r_graph1_end`
+	total_r_graph1_time=`echo $total_r_graph1_time+$time | bc -l`
+	time=`./calculate_time_diff $r_graph2_start $r_graph2_end`
+	total_r_graph2_time=`echo $total_r_graph2_time+$time | bc -l`
+	time=`./calculate_time_diff $r_graph3_start $r_graph3_end`
+	total_r_graph3_time=`echo $total_r_graph3_time+$time | bc -l`
+	time=`./calculate_time_diff $r_license_start $r_license_end`
+	total_r_license_time=`echo $total_r_license_time+$time | bc -l`
+
+	echo '------------------------------------------------------'
+	echo 'Request ID: ' $id
+	echo '------------------------------------------------------'
+	echo 'Graph Aggregator DB Call time taken(ms): '`./calculate_time_diff $ga_db_start $ga_db_end`
+	echo 'Stack Aggregator Graph Call time taken(ms): '`./calculate_time_diff $sa_graph1_start $sa_graph1_end`
+	echo 'Stack Aggregator License Call time taken(ms): '`./calculate_time_diff $sa_license_start $sa_license_end`
+	echo 'Recommender PGM Call time taken(ms): '`./calculate_time_diff $r_pgm_start $r_pgm_end`
+	echo 'Recommender First Graph Call time taken(ms): '`./calculate_time_diff $r_graph1_start $r_graph1_end`
+	echo 'Recommender Second Graph Call time taken(ms): '`./calculate_time_diff $r_graph2_start $r_graph2_end`
+	echo 'Recommender Third Graph Call time taken(ms): '`./calculate_time_diff $r_graph3_start $r_graph3_end`
+	echo 'Recommender License Call time taken(ms): '`./calculate_time_diff $r_license_start $r_license_end`
+	echo 'Total time taken(ms): '`./calculate_time_diff $sa_graph1_start $r_license_end`
+	echo '------------------------------------------------------'
+	let count=$count+1
+
+	time=`/Users/samuzzal/Desktop/PERF_TESTS/log-analysis/calculate_time_diff 2017-12-21T07:48:40.587865 2017-12-21T07:48:41.861033`
+	total_time=`echo $total_time+$time | bc -l`
+done < .req_ids.log
+
+echo "==== Average Time ===="
+echo "Total time: " $total_time
+echo "Total requests: " $count
+echo "Average Worker Response Time:" `echo $total_time/$count | bc -l`
+echo 
+echo "==== Individual Calls Average Time ===="
+echo "Average Graph Aggregator DB Call Response Time:" `echo $total_ga_db_time/$count | bc -l`
+echo "Average Stack Aggregator First Graph Call Response Time:" `echo $total_sa_graph1_time/$count | bc -l`
+echo "Average Stack Aggregator License Server Call Response Time:" `echo $total_sa_license_time/$count | bc -l`
+echo "Average Recommender PGM Call Response Time:" `echo $total_r_pgm_time/$count | bc -l`
+echo "Average Recommender First Graph Call Response Time:" `echo $total_r_graph1_time/$count | bc -l`
+echo "Average Recommender Second Graph Call Response Time:" `echo $total_r_graph2_time/$count | bc -l`
+echo "Average Recommender Third Graph Call Response Time:" `echo $total_r_graph3_time/$count | bc -l`
+echo "Average Recommender License Server Call Response Time:" `echo $total_r_license_time/$count | bc -l`
+
