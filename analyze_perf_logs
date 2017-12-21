@@ -10,6 +10,7 @@ pods=`oc get pods | grep bayesian-worker-api | grep "Running" | awk '{print $1}'
 
 rm -rf .perf.log 
 for pod in $pods; do
+	echo "Gathering perf logs from $pod ..."
 	oc logs $pod|grep PERF_LOG|awk '{print $6}' >> .perf.log
 done
 
@@ -74,11 +75,15 @@ while read id; do
 	echo 'Recommender Third Graph Call time taken(ms): '`./calculate_time_diff $r_graph3_start $r_graph3_end`
 	echo 'Recommender License Call time taken(ms): '`./calculate_time_diff $r_license_start $r_license_end`
 	echo 'Total time taken(ms): '`./calculate_time_diff $sa_graph1_start $r_license_end`
-	echo '------------------------------------------------------'
+	echo 
 	let count=$count+1
 
 	time=`/Users/samuzzal/Desktop/PERF_TESTS/log-analysis/calculate_time_diff $ga_db_start $r_license_end`
 	total_time=`echo $total_time+$time | bc -l`
+	echo 'Request Start Timestamp: ' $ga_db_start
+	echo 'Request End Timestamp: ' $r_license_end
+	echo 'Time taken(ms): ' $time
+	echo '------------------------------------------------------'
 done < .req_ids.log
 
 echo "==== Average Time ===="
