@@ -77,7 +77,7 @@ while read id; do
 	echo '------------------------------------------------------'
 	let count=$count+1
 
-	time=`/Users/samuzzal/Desktop/PERF_TESTS/log-analysis/calculate_time_diff 2017-12-21T07:48:40.587865 2017-12-21T07:48:41.861033`
+	time=`/Users/samuzzal/Desktop/PERF_TESTS/log-analysis/calculate_time_diff $ga_db_start $r_license_end`
 	total_time=`echo $total_time+$time | bc -l`
 done < .req_ids.log
 
